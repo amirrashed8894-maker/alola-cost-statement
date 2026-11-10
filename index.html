@@ -61,7 +61,7 @@ td input,td select{min-height:36px;font-size:14px;padding:4px 6px}tr.tot td{back
 <div id="pv"><div class="tb"><div><b>بيان تكلفة</b><small>مراجعة قبل الطباعة. الإغلاق لا يغيّر شيئاً.</small></div><div style="display:flex;gap:6px"><button class="btn2 sm" id="pvPrint" type="button">طباعة</button><button class="btn2 sm" id="pvPdf" type="button">حفظ PDF</button><button class="btn2 sm" id="pvClose" type="button">إغلاق</button></div></div><div class="wrap" id="pvw"></div></div>
 <input type="file" id="fin" accept="application/pdf,.pdf" style="display:none">
 <div id="busy">جاري التجهيز…</div><div id="toast"></div>
-<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pdf.min.js"></script><script src="supply-cost.js"></script><script src="cs-report.js?v=1"></script><script src="app.js?v=1"></script>
+<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pdf.min.js"></script><script src="supply-cost.js"></script><script src="cs-report.js?v=2"></script><script src="app.js?v=2"></script>
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;let done=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=true;location.reload()}});
 navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})}).catch(()=>{})}</script>
 </body>

@@ -11,12 +11,16 @@ const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Cairo'})
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const MK='alola_cost_masters_v1',SK='alola_cost_statements_v1',CK='alola_cost_current_v1';
 const PALLET=SupplyCost.PALLET_NAME;
-const DEF={owners:['محمد ادريس ابراهيم عيد'],importers:[],destinations:[],drivers:[],packs:[{name:'صندوق بلاستيك 8 ك',kg:0.35},{name:'كرتون مقفول 14 ك',kg:0.8},{name:'كرتون مقفول 8 ك',kg:0.45}],palletKg:20,prices:[],fx:'',fxNote:'',letterSeq:0,tcSeq:0};
+const blocked=s=>/ادريس|إدريس/.test(String(s??''));
+const cleanName=s=>blocked(s)?'':String(s??'').trim();
+const DEF={owners:[],importers:[],destinations:[],drivers:[],packs:[{name:'صندوق بلاستيك 8 ك',kg:0.35},{name:'كرتون مقفول 14 ك',kg:0.8},{name:'كرتون مقفول 8 ك',kg:0.45}],palletKg:20,prices:[],fx:'',fxNote:'',letterSeq:0,tcSeq:0};
 let M;try{M=JSON.parse(localStorage.getItem(MK))}catch(e){}M=Object.assign(JSON.parse(JSON.stringify(DEF)),M||{});
 let ST;try{ST=JSON.parse(localStorage.getItem(SK))}catch(e){}ST=Array.isArray(ST)?ST:[];
 const saveM=()=>localStorage.setItem(MK,JSON.stringify(M)),saveST=()=>localStorage.setItem(SK,JSON.stringify(ST));
-function blank(){return{id:uid(),no:'',letterNo:String((+M.letterSeq||0)+1),owner:M.owners[0]||'',importer:'',shipNo:'',date:today(),reefer:'',driver:'',dest:'',lots:'',gross:'',fx:M.fx||'',fxNote:M.fxNote||'',palletCount:'',palletKg:M.palletKg,lines:[],src:''}}
-let C;try{C=JSON.parse(localStorage.getItem(CK))}catch(e){}if(!C||!C.id)C=blank();
+function scrubOwner(st){if(st&&blocked(st.owner))st.owner='';return st}
+(function scrubStored(){const ow=(M.owners||[]).map(cleanName).filter((v,i,a)=>v&&a.indexOf(v)===i);const chM=JSON.stringify(ow)!==JSON.stringify(M.owners);M.owners=ow;let chS=false;ST.forEach(x=>{if(blocked(x.owner)){x.owner='';chS=true}});if(chM)saveM();if(chS)saveST()})();
+function blank(){return{id:uid(),no:'',letterNo:String((+M.letterSeq||0)+1),owner:M.owners[0]||'',importer:'',shipNo:'',date:today(),reefer:'',driver:'',dest:'',lots:'',gross:'',fx:M.fx||'',fxNote:M.fxNote||'',palletCount:'',palletKg:M.palletKg,lines:[],pallets:[],src:''}}
+let C;try{C=JSON.parse(localStorage.getItem(CK))}catch(e){}if(!C||!C.id)C=blank();else scrubOwner(C);
 const saveC=()=>localStorage.setItem(CK,JSON.stringify(C));
 let TAB='ed';
 function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2800)}
@@ -45,14 +49,14 @@ function fromRows(rows){const hi=rows.findIndex(r=>r&&r.some(c=>nk(c)==='رقم 
  const head={};rows.slice(0,hi).forEach(r=>{if(r&&r.length>1&&r[0]!=null&&r[1]!=null&&String(r[1]).trim()!=='')head[nk(r[0])]=String(r[1]).trim()});
  const H=(...k)=>{for(const x of k){const v=head[nk(x)];if(v&&v!=='—')return v}return ''};
  const cols=rows[hi].map(nk);const ci=(...k)=>{for(const x of k){const i=cols.findIndex(c=>c===nk(x)||c.startsWith(nk(x)));if(i>=0)return i}return -1};
- const iP=ci('رقم الباليت'),iV=ci('الصنف'),iC=ci('نوع الكرتون'),iN=ci('عدد الكراتين','كراتين'),iW=ci('وزن الكرتونه');
- const g={},pals=new Set();
+ const iP=ci('رقم الباليت'),iV=ci('الصنف'),iC=ci('نوع الكرتون'),iN=ci('عدد الكراتين','كراتين'),iW=ci('وزن الكرتونه'),iD=ci('تاريخ الإنتاج','تاريخ الانتاج');
+ const g={},pals=new Set(),plist=[];
  rows.slice(hi+1).forEach(r=>{if(!r||r[iP]==null||String(r[iP]).trim()==='')return;const v=String(r[iV]??'').trim(),c=String(r[iC]??'').trim(),n=+num(r[iN])||0;let w=iW>=0?+num(r[iW]):0;if(!w){const m=AD(c).match(/(\d+(?:\.\d+)?)\s*ك/);w=m?+m[1]:0}
-  pals.add(String(r[iP]).trim());const k=v+'|'+c;g[k]=g[k]||{name:(v+' '+c).replace(/\s+/g,' ').trim(),ctype:c,cartons:0,fruit:0,pallets:0,noW:false};g[k].cartons+=n;g[k].fruit+=n*w;g[k].pallets++;if(!w)g[k].noW=true});
- return{info:{reefer:H('رقم الحاوية / البراد','رقم الحاوية','رقم البراد'),date:H('تاريخ التحميل'),importer:H('اسم العميل','العميل'),lots:H('رقم اللوط'),dest:H('الوجهة'),driver:H('اسم السائق','السائق')},groups:Object.values(g),pallets:pals.size}}
+  const pid=String(r[iP]).trim();pals.add(pid);let pd=iD>=0?String(r[iD]??'').trim():'';const iso=/^(\d{4}-\d{2}-\d{2})/.exec(pd);const dmy=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(pd);if(iso)pd=iso[1];else if(dmy)pd=dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');else pd='';plist.push({p:pid,name:v,ctype:c,date:pd});const k=v+'|'+c;g[k]=g[k]||{name:(v+' '+c).replace(/\s+/g,' ').trim(),ctype:c,cartons:0,fruit:0,pallets:0,noW:false};g[k].cartons+=n;g[k].fruit+=n*w;g[k].pallets++;if(!w)g[k].noW=true});
+ return{info:{reefer:H('رقم الحاوية / البراد','رقم الحاوية','رقم البراد'),date:H('تاريخ التحميل'),importer:H('اسم العميل','العميل'),lots:H('رقم اللوط'),dest:H('الوجهة'),driver:H('اسم السائق','السائق')},groups:Object.values(g),pallets:pals.size,palletRows:plist}}
 async function importFile(file){$('busy').style.display='flex';try{const rows=await readPdf(file);const r=fromRows(rows);
   ['reefer','date','importer','lots','dest','driver'].forEach(k=>{if(r.info[k])C[k]=k==='date'?r.info[k].slice(0,10):r.info[k]});
-  C.palletCount=String(r.pallets);C.lines=r.groups.map(x=>({name:x.name,ctype:x.ctype,pack:matchPack(x.ctype),cartons:String(x.cartons),fruit:String(Math.round(x.fruit*10)/10),ton:priceOf(x.name)}));C.src=file.name;
+  C.palletCount=String(r.pallets);C.pallets=r.palletRows||[];C.lines=r.groups.map(x=>({name:x.name,ctype:x.ctype,pack:matchPack(x.ctype),cartons:String(x.cartons),fruit:String(Math.round(x.fruit*10)/10),ton:priceOf(x.name)}));C.src=file.name;
   ['importers','destinations','drivers'].forEach((k,i)=>{const v=[C.importer,C.dest,C.driver][i];if(v&&v!=='—'&&!M[k].includes(v))M[k].push(v)});saveM();saveC();TAB='ed';render();
   const miss=C.lines.filter(l=>!l.pack).length;toast('✔ اتقرا الباكينج ليست: '+r.pallets+' باليت'+(miss?' — حدد نوع العبوة لـ '+miss+' صنف':''))}
  catch(e){alert(e.message)}finally{$('busy').style.display='none'}}
@@ -67,10 +71,12 @@ function editor(){const q=quote(C);
  <div class="card"><h2>بيانات البيان ${C.no?esc(C.no):'<span class="hint">(رقم البيان يتحدد عند الحفظ)</span>'}</h2><div class="g3">
  ${fld('owner','الاسم في رأس البيان (المورد)',{list:'dlOwners'})}${fld('importer','المستورد',{list:'dlImp'})}${fld('shipNo','رقم الشحنة')}${fld('date','التاريخ',{type:'date'})}${fld('reefer','رقم البراد',{ltr:1})}${fld('driver','اسم السائق',{list:'dlDrv'})}${fld('dest','الجهة',{list:'dlDest'})}${fld('lots','اللوط')}${fld('no','رقم بيان التكلفة',{ro:1,ph:'TC- تلقائي'})}${fld('letterNo','رقم الخطاب',{num:1})}
  ${fld('gross','الوزن القائم كجم',{num:1,ph:'تلقائي: '+fm(q.grossAuto,1)})}${fld('palletCount','عدد الباليتات',{num:1})}${fld('palletKg','وزن طقم الباليت كجم',{num:1})}${fld('fx','سعر الصرف (ج للدولار)',{num:1})}${fld('fxNote','ملاحظة الصرف')}</div>
+ <div class="hint">عمر البراد / الحاوية: <b>${esc((window.CS&&CS.ageLabel)?CS.ageLabel(C.date):'—')}</b> — من تاريخ التحميل حتى اليوم.</div>
  ${dl('dlOwners',M.owners)}${dl('dlImp',M.importers)}${dl('dlDest',M.destinations)}${dl('dlDrv',M.drivers)}${dl('dlPrices',M.prices.map(p=>p.name))}
  <h3>الأصناف</h3><div class="tw"><table><tr><th>الصنف</th><th>نوع العبوة (المهمات)</th><th>عدد العبوات</th><th>وزن الثمرة كجم</th><th>الوزن الصافي</th><th>سعر الطن $</th><th>الإجمالي $</th><th>سعر الطن ج</th><th></th></tr>${lines||'<tr><td colspan="9" class="hint">اسحب ملف باكينج ليست أو أضف صنف</td></tr>'}</table></div>
  <button class="btn2 sm" id="addL" type="button" style="margin-top:6px">+ صنف</button>
  <div class="hint" style="margin-top:4px">وزن الثمرة = العبوات × وزن العبوة من الباكينج. لو كتبت الوزن القائم، الصافي بيتوزع على الأصناف بنفس النسبة.</div>
+ ${(C.pallets||[]).some(x=>x&&x.date)?`<h3>الباليتات ذات تاريخ الإنتاج</h3><div class="tw"><table><tr><th>رقم الباليت</th><th>الصنف</th><th>تاريخ الإنتاج</th><th>عمر الباليت</th></tr>${C.pallets.filter(x=>x&&x.date).map(x=>`<tr><td dir="ltr">${esc(x.p)}</td><td>${esc(x.name||'')}</td><td dir="ltr">${esc(x.date)}</td><td>${esc((window.CS&&CS.ageLabel)?CS.ageLabel(x.date):'')}</td></tr>`).join('')}</table></div>`:''}
  <h3>يخصم (المهمات)</h3><div class="tw"><table><tr><th>الصنف</th><th>العدد</th><th>وزن الوحدة</th><th>الوزن</th></tr>${ded}</table></div>
  <div class="k"><div><span>الوزن القائم</span><b>${fm(q.gross,1)}</b></div><div><span>عدد العبوات</span><b>${fm(q.packages)}</b></div><div><span>إجمالي المخصوم</span><b>${fm(q.tare,1)}</b></div><div><span>الصافي بدون مهمات</span><b>${fm(q.net,1)}</b></div><div><span>الإجمالي $</span><b>${q.ready?fm(q.usd,2):'—'}</b></div><div><span>سعر الصرف</span><b>${q.fxRate?fm(q.fxRate,2):'—'}</b></div><div><span>الإجمالي بالجنيه</span><b>${q.egp==null?'—':fm(q.egp,2)}</b></div><div><span>الحالة</span><b style="font-size:13px">${C.no?'محفوظ — التعديل بنفس الرقم':'جديد'}</b></div></div></div>`}
 function list(){const rows=ST.slice().sort((a,b)=>(b.no||'').localeCompare(a.no||'')).map(s=>{const q=quote(s);return `<tr><td><b>${esc(s.no)}</b></td><td>${esc(s.date)}</td><td dir="ltr">${esc(s.reefer)}</td><td>${esc(s.importer)}</td><td>${fm(q.net,1)}</td><td>${q.ready?fm(q.usd,2):'—'}</td><td>${q.egp==null?'—':fm(q.egp,2)}</td><td><button class="btn2 sm" data-open="${s.id}" type="button">فتح وتعديل</button> <button class="btn3 sm" data-rm="${s.id}" type="button">حذف</button></td></tr>`}).join('');
@@ -85,7 +91,7 @@ function render(){$('tEd').classList.toggle('on',TAB==='ed');$('tLs').classList.
  $('m').innerHTML=TAB==='ed'?editor():TAB==='ls'?list():masters();const q=quote(C);$('stat').innerHTML=(C.no||'بيان جديد')+'<br>'+(q.ready?fm(q.usd,2)+' $':'')}
 $('tEd').onclick=()=>{TAB='ed';render()};$('tLs').onclick=()=>{TAB='ls';render()};$('tMs').onclick=()=>{TAB='ms';render()};
 $('m').addEventListener('change',ev=>{const t=ev.target;
- if(t.dataset.f){C[t.dataset.f]=t.value;saveC();render();return}
+ if(t.dataset.f){C[t.dataset.f]=t.dataset.f==='owner'?cleanName(t.value):t.value;saveC();render();return}
  if(t.dataset.l!=null){const l=C.lines[+t.dataset.l];l[t.dataset.k]=t.value;if(t.dataset.k==='name'&&!l.ton)l.ton=priceOf(t.value);saveC();render();return}
  if(t.dataset.ml){M[t.dataset.ml][+t.dataset.i]=t.value.trim();M[t.dataset.ml]=M[t.dataset.ml].filter(Boolean);saveM();render();return}
  if(t.dataset.pk!=null){const p=M.packs[+t.dataset.pk];const old=p.name;p[t.dataset.k]=t.dataset.k==='kg'?(+num(t.value)||0):t.value.trim();if(t.dataset.k==='name')C.lines.forEach(l=>{if(l.pack===old)l.pack=p.name});saveM();saveC();render();return}
@@ -97,7 +103,7 @@ $('m').addEventListener('click',ev=>{const t=ev.target;
  if(t.dataset.del!=null){C.lines.splice(+t.dataset.del,1);saveC();render();return}
  if(t.dataset.open){const s=ST.find(x=>x.id===t.dataset.open);if(s){C=JSON.parse(JSON.stringify(s));saveC();TAB='ed';render()}return}
  if(t.dataset.rm){const s=ST.find(x=>x.id===t.dataset.rm);if(s&&confirm('حذف البيان '+s.no+' من الجهاز؟')){ST=ST.filter(x=>x.id!==s.id);saveST();if(C.id===s.id){C=blank();saveC()}render()}return}
- if(t.dataset.madd){const k=t.dataset.madd,v=$('add_'+k).value.trim();if(v&&!M[k].includes(v)){M[k].push(v);saveM()}render();return}
+ if(t.dataset.madd){const k=t.dataset.madd,v=$('add_'+k).value.trim();if(v&&!(k==='owners'&&blocked(v))&&!M[k].includes(v)){M[k].push(v);saveM()}render();return}
  if(t.dataset.mdel){M[t.dataset.mdel].splice(+t.dataset.i,1);saveM();render();return}
  if(t.dataset.pkdel!=null){if(confirm('حذف العبوة؟')){M.packs.splice(+t.dataset.pkdel,1);saveM();render()}return}
  if(t.id==='pkAdd'){const n=$('pkN').value.trim(),k=num($('pkK').value);if(n&&k!==''){M.packs.push({name:n,kg:+k});saveM()}render();return}
@@ -111,7 +117,7 @@ document.addEventListener('dragover',ev=>ev.preventDefault());document.addEventL
 $('fin').onchange=()=>{const f=$('fin').files[0];$('fin').value='';if(f)importFile(f)};
 function problems(){const p=[];if(!C.lines.length)p.push('مفيش أصناف');C.lines.forEach((l,i)=>{if(!l.name)p.push('صنف '+(i+1)+' بدون اسم');if(!l.pack)p.push('حدد نوع العبوة لـ «'+(l.name||i+1)+'»');if(l.ton===''||num(l.ton)==='')p.push('سعر الطن ناقص لـ «'+(l.name||i+1)+'»')});if(num(C.fx)==='')p.push('سعر الصرف ناقص');return p}
 function commit(){if(!C.no){M.tcSeq=(+M.tcSeq||0)+1;C.no='TC-'+String(M.tcSeq).padStart(6,'0');const ln=parseInt(AD(C.letterNo),10);if(ln>(+M.letterSeq||0))M.letterSeq=ln;saveM();C.created=new Date().toISOString()}
- C.updated=new Date().toISOString();['importers','destinations','drivers','owners'].forEach((k,i)=>{const v=(C[['importer','dest','driver','owner'][i]]||'').trim();if(v&&v!=='—'&&v!=='-'&&!M[k].includes(v))M[k].push(v)});saveM();
+ C.updated=new Date().toISOString();scrubOwner(C);['importers','destinations','drivers','owners'].forEach((k,i)=>{const v=(C[['importer','dest','driver','owner'][i]]||'').trim();if(v&&v!=='—'&&v!=='-'&&!(k==='owners'&&blocked(v))&&!M[k].includes(v))M[k].push(v)});saveM();
  const i=ST.findIndex(x=>x.id===C.id);if(i>=0)ST[i]=JSON.parse(JSON.stringify(C));else ST.push(JSON.parse(JSON.stringify(C)));saveST();saveC()}
 function guard(){const p=problems();if(p.length&&!confirm('ملاحظات قبل الحفظ:\n• '+p.join('\n• ')+'\n\nتكمل برضه؟'))return false;return true}
 $('bSave').onclick=()=>{if(!guard())return;commit();render();toast('✔ اتحفظ '+C.no)};
