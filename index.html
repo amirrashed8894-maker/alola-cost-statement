@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4d2b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="بيان تكلفة العلا">
+<title>بيان تكلفة — شركة العلا</title>
+<style>
+@font-face{font-family:Cairo;font-weight:200 1000;src:url(fonts/cairo-arabic.woff2) format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E}
+@font-face{font-family:Cairo;font-weight:200 1000;src:url(fonts/cairo-latin.woff2) format('woff2')}
+:root{--g:#1d4d2b;--g2:#4a7c50;--l:#e7f2ea;--bad:#d93025;--bg:#eef3ef}
+*{box-sizing:border-box}
+body{margin:0;font-family:Cairo,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:#1f2937;font-size:15px}
+header.bar{position:sticky;top:0;z-index:5;background:var(--g);color:#fff;padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:8px}
+header.bar .t{display:flex;align-items:center;gap:10px}header.bar img{height:38px;background:#fff;border-radius:8px;padding:2px 4px}
+header.bar h1{font-size:18px;margin:0;line-height:1.2}header.bar h1 small{display:block;font-size:11.5px;font-weight:400;opacity:.85}
+nav.tabs{display:flex;gap:6px;max-width:1000px;margin:10px auto 0;padding:0 12px}
+nav.tabs button{flex:1;background:#fff;color:var(--g);border:1.5px solid #cfe0d4;min-height:42px}nav.tabs button.on{background:var(--g);color:#fff;border-color:var(--g)}
+main{padding:12px;max-width:1000px;margin:auto;padding-bottom:100px}
+.card{background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px #0002}
+.card h2{font-size:16px;margin:0 0 8px;color:var(--g)}
+.card h3{font-size:14px;margin:12px 0 6px;color:var(--g);background:var(--l);padding:4px 8px;border-right:4px solid #6aa84f;border-radius:4px}
+label{display:block;font-size:12.5px;color:#555;margin:6px 0 3px}
+input,select{width:100%;min-height:42px;font-size:15px;padding:6px 9px;border:1.5px solid #cdd8d0;border-radius:9px;background:#fff;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:var(--g2);box-shadow:0 0 0 3px #4a7c5033}
+input[readonly]{background:#f1f5f2;color:#334;font-weight:700}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 10px}@media(max-width:700px){.g3{grid-template-columns:1fr 1fr}}@media(max-width:420px){.g3{grid-template-columns:1fr}}
+button{font-family:inherit;font-size:15px;min-height:44px;border:0;border-radius:11px;padding:8px 14px;cursor:pointer}
+.btn{background:var(--g);color:#fff}.btn2{background:#e3eee6;color:var(--g)}.btn3{background:#fdecea;color:var(--bad)}.sm{min-height:34px;font-size:13px;padding:4px 10px}
+.drop{border:2px dashed #8fb79a;border-radius:12px;padding:14px;text-align:center;background:#f6fbf7;color:#2d5a38;cursor:pointer}
+.drop.over{background:#e3f2e7;border-color:var(--g)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{border:1px solid #d5e2da;padding:4px 5px;text-align:center;vertical-align:middle}th{background:#eef6ea;color:var(--g)}
+td input,td select{min-height:36px;font-size:14px;padding:4px 6px}tr.tot td{background:var(--l);font-weight:800}
+.k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}@media(max-width:600px){.k{grid-template-columns:1fr 1fr}}
+.k div{background:#f6fbf7;border:1px solid #cfe0d4;border-radius:10px;padding:6px;text-align:center}.k span{display:block;font-size:12px;color:#466}.k b{font-size:17px;color:var(--g);direction:ltr;display:block}
+.hint{font-size:12.5px;color:#6b7280}.msg{padding:8px 10px;border-radius:10px;margin:8px 0;font-size:13.5px}.ok{background:#e6f4ea;color:#137333}.bad{background:#fdecea;color:var(--bad)}
+.actions{position:fixed;bottom:0;left:0;right:0;background:#fff;box-shadow:0 -2px 8px #0002;padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:5}
+.miss{border-color:#f9ab00!important;background:#fff8e1!important}
+#pv{display:none;position:fixed;inset:0;background:#dfe7e1;z-index:150;overflow:auto}
+#pv .tb{position:sticky;top:0;background:var(--g);color:#fff;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;z-index:2}
+#pv .tb b{font-size:16px}#pv .tb small{display:block;font-size:11.5px;opacity:.85}
+#pv .wrap{width:794px;transform-origin:top right;margin:12px auto;box-shadow:0 2px 10px #0003}
+#busy{position:fixed;inset:0;background:#0007;color:#fff;display:none;align-items:center;justify-content:center;font-size:18px;z-index:200}
+#toast{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);background:#1d3b21;color:#fff;padding:8px 16px;border-radius:10px;display:none;z-index:300;font-size:14px}
+.li{display:flex;gap:6px;align-items:center;margin-bottom:6px}.li input{flex:1}
+@media print{body>*:not(#pv){display:none!important}#pv{position:static;display:block!important;background:#fff;overflow:visible}#pv .tb{display:none}#pv .wrap{transform:none!important;margin:0;box-shadow:none;height:auto!important}@page{size:A4;margin:0}}
+</style>
+</head>
+<body>
+<script>window.ALOLA_AUTH_APP='cost';</script>
+<script src="auth-gate.js?v=3"></script>
+<header class="bar"><div class="t"><img src="alola_logo_green.png" alt=""><h1>بيان تكلفة<small>شركة العلا لفرز الحاصلات الزراعية</small></h1></div><div id="stat" style="font-size:12.5px;text-align:left"></div></header>
+<nav class="tabs"><button id="tEd" class="on" type="button">البيان</button><button id="tLs" type="button">البيانات المحفوظة</button><button id="tMs" type="button">القوائم والأسعار</button></nav>
+<main id="m"></main>
+<div class="actions" id="acts"><button class="btn" id="bPrev" type="button">معاينة / طباعة</button><button class="btn2" id="bPdf" type="button">حفظ PDF</button><button class="btn2" id="bSave" type="button">حفظ البيان</button><button class="btn3" id="bNew" type="button">بيان جديد</button></div>
+<div id="pv"><div class="tb"><div><b>بيان تكلفة</b><small>مراجعة قبل الطباعة. الإغلاق لا يغيّر شيئاً.</small></div><div style="display:flex;gap:6px"><button class="btn2 sm" id="pvPrint" type="button">طباعة</button><button class="btn2 sm" id="pvPdf" type="button">حفظ PDF</button><button class="btn2 sm" id="pvClose" type="button">إغلاق</button></div></div><div class="wrap" id="pvw"></div></div>
+<input type="file" id="fin" accept="application/pdf,.pdf" style="display:none">
+<div id="busy">جاري التجهيز…</div><div id="toast"></div>
+<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pdf.min.js"></script><script src="supply-cost.js"></script><script src="cs-report.js?v=1"></script><script src="app.js?v=1"></script>
+<script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;let done=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=true;location.reload()}});
+navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})}).catch(()=>{})}</script>
+</body>
+</html>
