@@ -130,10 +130,12 @@ function commit(){if(!C.no){M.tcSeq=(+M.tcSeq||0)+1;C.no='TC-'+String(M.tcSeq).p
  const i=ST.findIndex(x=>x.id===C.id);if(i>=0)ST[i]=JSON.parse(JSON.stringify(C));else ST.push(JSON.parse(JSON.stringify(C)));saveST();saveC()}
 function guard(){const p=problems();if(p.length&&!confirm('ملاحظات قبل الحفظ:\n• '+p.join('\n• ')+'\n\nتكمل برضه؟'))return false;return true}
 $('bSave').onclick=()=>{if(!guard())return;commit();render();toast('✔ اتحفظ '+C.no)};
-async function makePdf(){$('busy').style.display='flex';try{const r=await CS.pdf(C,quote(C));return{blob:r.blob,name:CS.fileName(C)}}catch(e){alert('خطأ أثناء تجهيز الـ PDF: '+e.message);return null}finally{$('busy').style.display='none'}}
+function shareName(st){const code=String(st.reefer||st.shipNo||'').trim().replace(/[\\/:*?"<>|]+/g,'-');const d=/^\d{4}-\d{2}-\d{2}$/.test(st.date||'')?st.date:new Date().toISOString().slice(0,10);return ['بيان تكلفة العلا',String(st.no||'').trim(),code,d].filter(Boolean).join(' — ')+'.pdf'}
+async function makePdf(){$('busy').style.display='flex';try{const r=await CS.pdf(C,quote(C));return{blob:r.blob,name:shareName(C)}}catch(e){alert('خطأ أثناء تجهيز الـ PDF: '+e.message);return null}finally{$('busy').style.display='none'}}
 function download(f){const u=URL.createObjectURL(f.blob);const a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);toast('✔ اتحفظ: '+f.name)}
-$('bPdf').onclick=async()=>{if(!guard())return;commit();render();const f=await makePdf();if(f)download(f)};
-$('pvPdf').onclick=async()=>{const f=await makePdf();if(f)download(f)};
+function preview(f){PdfShare.open(f.blob,f.name,{title:'بيان تكلفة'+(C.reefer||C.shipNo?' '+(C.reefer||C.shipNo):'')})}
+$('bPdf').onclick=async()=>{if(!guard())return;commit();render();const f=await makePdf();if(f)preview(f)};
+$('pvPdf').onclick=async()=>{const f=await makePdf();if(f)preview(f)};
 $('bPrev').onclick=async()=>{if(!guard())return;commit();render();$('busy').style.display='flex';try{const w=$('pvw');const r=await CS.preview(C,quote(C),w);const sc=Math.min(1,(window.innerWidth-24)/794);w.style.transform=`scale(${sc})`;w.style.height=(1123*sc)+'px';$('pv').style.display='block';if(r.scale<1)toast('تم تصغير المحتوى تلقائياً عشان البيان يطلع في صفحة واحدة')}finally{$('busy').style.display='none'}};
 $('pvPrint').onclick=()=>{const w=$('pvw');const t=w.style.transform;w.style.transform='none';window.print();w.style.transform=t};
 $('pvClose').onclick=()=>{$('pv').style.display='none'};
