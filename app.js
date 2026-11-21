@@ -54,10 +54,19 @@ function fromRows(rows){const hi=rows.findIndex(r=>r&&r.some(c=>nk(c)==='رقم 
  rows.slice(hi+1).forEach(r=>{if(!r||r[iP]==null||String(r[iP]).trim()==='')return;const v=String(r[iV]??'').trim(),c=String(r[iC]??'').trim(),n=+num(r[iN])||0;let w=iW>=0?+num(r[iW]):0;if(!w){const m=AD(c).match(/(\d+(?:\.\d+)?)\s*ك/);w=m?+m[1]:0}
   const pid=String(r[iP]).trim();pals.add(pid);let pd=iD>=0?String(r[iD]??'').trim():'';const iso=/^(\d{4}-\d{2}-\d{2})/.exec(pd);const dmy=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(pd);if(iso)pd=iso[1];else if(dmy)pd=dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');else pd='';plist.push({p:pid,name:v,ctype:c,date:pd});const k=v+'|'+c;g[k]=g[k]||{name:(v+' '+c).replace(/\s+/g,' ').trim(),ctype:c,cartons:0,fruit:0,pallets:0,noW:false};g[k].cartons+=n;g[k].fruit+=n*w;g[k].pallets++;if(!w)g[k].noW=true});
  return{info:{reefer:H('رقم الحاوية / البراد','رقم الحاوية','رقم البراد'),date:H('تاريخ التحميل'),importer:H('اسم العميل','العميل'),lots:H('رقم اللوط'),dest:H('الوجهة'),driver:H('اسم السائق','السائق')},groups:Object.values(g),pallets:pals.size,palletRows:plist}}
+/* v3: الاستيراد ما يكتبش على بيان عربية تانية. هوية العربية = رقم البراد/الحاوية (من غير مسافات وشرط وأرقام عربي) + تاريخ التحميل */
+const normNo=s=>AD(s==null?'':s).toUpperCase().replace(/[\s\/\\\-_.|]+/g,'');
+const nameKey=s=>nk(s).replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ي').replace(/^(مؤسس[هة]|موسسه|شركه|شركة|مكتب|الساده|السيد)\s+/,'').replace(/\s+/g,'');
+const canon=(list,v)=>{v=String(v||'').trim();if(!v)return v;return (list||[]).find(x=>x===v)||(list||[]).find(x=>nameKey(x)===nameKey(v))||v};
+const sameTruck=(a,b)=>!!normNo(a.reefer)&&normNo(a.reefer)===normNo(b.reefer)&&String(a.date||'').slice(0,10)===String(b.date||'').slice(0,10);
 async function importFile(file){$('busy').style.display='flex';try{const rows=await readPdf(file);const r=fromRows(rows);
+  const inf={reefer:r.info.reefer,date:(r.info.date||'').slice(0,10)};
+  if(C.no&&normNo(C.reefer)&&!sameTruck(C,inf)){if(confirm('البيان المفتوح '+C.no+' بتاع عربية '+C.reefer+' يوم '+C.date+'.\nالملف ده لعربية '+(inf.reefer||'—')+' يوم '+(inf.date||'—')+'.\n\nموافق = بيان جديد (البيان '+C.no+' يفضل زي ما هو)\nإلغاء = استبدل بيانات البيان '+C.no))C=blank()}
+  else if(!C.no){const ex=ST.find(x=>sameTruck(x,inf));if(ex&&confirm('فيه بيان متسجل لنفس العربية ونفس التاريخ: '+ex.no+' ('+ex.reefer+' — '+ex.date+').\n\nموافق = افتح البيان ده وحدّثه\nإلغاء = بيان جديد منفصل'))C=JSON.parse(JSON.stringify(ex))}
+  if(r.info.importer){const ci=canon(M.importers,r.info.importer);if(ci!==r.info.importer){r.info.importer=ci;setTimeout(()=>{try{toast('العميل متسجل باسم «'+ci+'» — اتربط بيه')}catch(e){}},50)}}
   ['reefer','date','importer','lots','dest','driver'].forEach(k=>{if(r.info[k])C[k]=k==='date'?r.info[k].slice(0,10):r.info[k]});
   C.palletCount=String(r.pallets);C.pallets=r.palletRows||[];C.lines=r.groups.map(x=>({name:x.name,ctype:x.ctype,pack:matchPack(x.ctype),cartons:String(x.cartons),fruit:String(Math.round(x.fruit*10)/10),ton:priceOf(x.name)}));C.src=file.name;
-  ['importers','destinations','drivers'].forEach((k,i)=>{const v=[C.importer,C.dest,C.driver][i];if(v&&v!=='—'&&!M[k].includes(v))M[k].push(v)});saveM();saveC();TAB='ed';render();
+  ['importers','destinations','drivers'].forEach((k,i)=>{const v=[C.importer,C.dest,C.driver][i];if(v&&v!=='—'&&!M[k].includes(v)&&!(k==='importers'&&M[k].some(x=>nameKey(x)===nameKey(v))))M[k].push(v)});saveM();saveC();TAB='ed';render();
   const miss=C.lines.filter(l=>!l.pack).length;toast('✔ اتقرا الباكينج ليست: '+r.pallets+' باليت'+(miss?' — حدد نوع العبوة لـ '+miss+' صنف':''))}
  catch(e){alert(e.message)}finally{$('busy').style.display='none'}}
 // ---------- UI ----------
@@ -117,7 +126,7 @@ document.addEventListener('dragover',ev=>ev.preventDefault());document.addEventL
 $('fin').onchange=()=>{const f=$('fin').files[0];$('fin').value='';if(f)importFile(f)};
 function problems(){const p=[];if(!C.lines.length)p.push('مفيش أصناف');C.lines.forEach((l,i)=>{if(!l.name)p.push('صنف '+(i+1)+' بدون اسم');if(!l.pack)p.push('حدد نوع العبوة لـ «'+(l.name||i+1)+'»');if(l.ton===''||num(l.ton)==='')p.push('سعر الطن ناقص لـ «'+(l.name||i+1)+'»')});if(num(C.fx)==='')p.push('سعر الصرف ناقص');return p}
 function commit(){if(!C.no){M.tcSeq=(+M.tcSeq||0)+1;C.no='TC-'+String(M.tcSeq).padStart(6,'0');const ln=parseInt(AD(C.letterNo),10);if(ln>(+M.letterSeq||0))M.letterSeq=ln;saveM();C.created=new Date().toISOString()}
- C.updated=new Date().toISOString();scrubOwner(C);['importers','destinations','drivers','owners'].forEach((k,i)=>{const v=(C[['importer','dest','driver','owner'][i]]||'').trim();if(v&&v!=='—'&&v!=='-'&&!(k==='owners'&&blocked(v))&&!M[k].includes(v))M[k].push(v)});saveM();
+ C.updated=new Date().toISOString();scrubOwner(C);['importers','destinations','drivers','owners'].forEach((k,i)=>{const v=(C[['importer','dest','driver','owner'][i]]||'').trim();if(v&&v!=='—'&&v!=='-'&&!(k==='owners'&&blocked(v))&&!M[k].includes(v)&&!(k==='importers'&&M[k].some(x=>nameKey(x)===nameKey(v))))M[k].push(v)});saveM();
  const i=ST.findIndex(x=>x.id===C.id);if(i>=0)ST[i]=JSON.parse(JSON.stringify(C));else ST.push(JSON.parse(JSON.stringify(C)));saveST();saveC()}
 function guard(){const p=problems();if(p.length&&!confirm('ملاحظات قبل الحفظ:\n• '+p.join('\n• ')+'\n\nتكمل برضه؟'))return false;return true}
 $('bSave').onclick=()=>{if(!guard())return;commit();render();toast('✔ اتحفظ '+C.no)};
