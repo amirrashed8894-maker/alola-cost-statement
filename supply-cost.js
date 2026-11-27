@@ -49,6 +49,9 @@ function quote(opt){
     const pack=mul1(g.cartons,unit);
     return Object.assign({},g,{packUnit:unit,packWeight:pack});
   });
+  /* t198 (مراجعة، نفس Al-Ola Station 1.4.6+ «cartonGross»): وزن الكرتونة في الباكينج ليست قائم للكرتونة (فاكهة + الكرتونة نفسها، من غير باليت).
+     مع opt.cartonGross: صافي السطر = الكراتين × وزن الكرتونة − الكراتين × وزن الكرتونة الفاضية؛ والقائم = الكراتين × وزن الكرتونة + الباليتات، والصافي = القائم − كل المهمات. من غيره: القاعدة القديمة. */
+  if(opt.cartonGross)lines.forEach(l=>{l.cartonGrossKg=l.fruit;l.fruit=round1(l.fruit-l.packWeight)});
   const palletWeight=mul1(palletCount,pUnit);
   const fruitTotal=add1(lines.map(l=>l.fruit));
   const tare=add1(lines.map(l=>l.packWeight).concat([palletWeight]));
@@ -73,7 +76,9 @@ function quote(opt){
     l.egpTon=fx!=null&&fx!==''&&isFinite(Number(fx))?money(Number(l.pricePerTon)*Number(fx)):null;
     usdRaw+=l.usdRaw;
   });
-  const egp=fx!=null&&fx!==''&&isFinite(Number(fx))&&Number(fx)>0?money(usdRaw*Number(fx)):null;
+  const usdTotal=money(lines.reduce((a,l)=>a+(l.usd||0),0));
+  /* t198: الإجمالي بالجنيه = الإجمالي $ المطبوع × سعر الصرف (زي Station 1.4.11) — قبل كده كان من الدولار قبل التقريب فيفرق قروش عن الضرب في البيان */
+  const egp=opt.cartonGross&&fx!=null&&fx!==''&&isFinite(Number(fx))&&Number(fx)>0?money(usdTotal*Number(fx)):(fx!=null&&fx!==''&&isFinite(Number(fx))&&Number(fx)>0?money(usdRaw*Number(fx)):null);
   const packNote=lines.filter(l=>l.cartons).map(l=>l.cartons.toLocaleString('en-US')+' '+l.name).join(' + ');
   const deductions=lines.filter(l=>l.cartons).map(l=>({name:l.name,ctype:l.ctype,count:l.cartons,unitKg:l.packUnit,weight:l.packWeight,role:'carton'}));
   if(palletCount)deductions.push({name:PALLET_NAME,count:palletCount,unitKg:pUnit,weight:palletWeight,role:'pallet'});

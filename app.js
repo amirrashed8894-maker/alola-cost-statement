@@ -13,25 +13,28 @@ const MK='alola_cost_masters_v1',SK='alola_cost_statements_v1',CK='alola_cost_cu
 const PALLET=SupplyCost.PALLET_NAME;
 const blocked=s=>/ادريس|إدريس/.test(String(s??''));
 const cleanName=s=>blocked(s)?'':String(s??'').trim();
+/* t198: أوزان العبوات الفاضية = جدول Al-Ola Station 1.4.9 / الباكينج ليست v20 (معتمد أمير t412u/t413u) */
+const PACKS149=[{name:'أوبن توب 7 ك',kg:0.35},{name:'مقفول صغير 7 ك',kg:0.45},{name:'مقفول 14 ك',kg:0.8},{name:'مقفول 15 ك',kg:0.85},{name:'جامبو بلاستيك 15 ك',kg:0.65}];
 const DEF={owners:[],importers:[],destinations:[],drivers:[],packs:[{name:'صندوق بلاستيك 8 ك',kg:0.35},{name:'كرتون مقفول 14 ك',kg:0.8},{name:'كرتون مقفول 8 ك',kg:0.45}],palletKg:20,prices:[],fx:'',fxNote:'',letterSeq:0,tcSeq:0};
 let M;try{M=JSON.parse(localStorage.getItem(MK))}catch(e){}M=Object.assign(JSON.parse(JSON.stringify(DEF)),M||{});
+(function addPacks149(){let ch=false;PACKS149.forEach(p=>{if(!M.packs.some(x=>x&&x.name===p.name)){M.packs.push(Object.assign({},p));ch=true}});if(ch)try{localStorage.setItem(MK,JSON.stringify(M))}catch(e){}})();
 let ST;try{ST=JSON.parse(localStorage.getItem(SK))}catch(e){}ST=Array.isArray(ST)?ST:[];
 const saveM=()=>localStorage.setItem(MK,JSON.stringify(M)),saveST=()=>localStorage.setItem(SK,JSON.stringify(ST));
 function scrubOwner(st){if(st&&blocked(st.owner))st.owner='';return st}
 (function scrubStored(){const ow=(M.owners||[]).map(cleanName).filter((v,i,a)=>v&&a.indexOf(v)===i);const chM=JSON.stringify(ow)!==JSON.stringify(M.owners);M.owners=ow;let chS=false;ST.forEach(x=>{if(blocked(x.owner)){x.owner='';chS=true}});if(chM)saveM();if(chS)saveST()})();
-function blank(){return{id:uid(),no:'',letterNo:String((+M.letterSeq||0)+1),owner:M.owners[0]||'',importer:'',shipNo:'',date:today(),reefer:'',driver:'',dest:'',lots:'',gross:'',fx:M.fx||'',fxNote:M.fxNote||'',palletCount:'',palletKg:M.palletKg,lines:[],pallets:[],src:''}}
+function blank(){return{id:uid(),no:'',letterNo:String((+M.letterSeq||0)+1),owner:M.owners[0]||'',importer:'',shipNo:'',date:today(),reefer:'',driver:'',dest:'',lots:'',gross:'',fx:M.fx||'',fxNote:M.fxNote||'',palletCount:'',palletKg:M.palletKg,lines:[],pallets:[],src:'',netRule:'v2'}}
 let C;try{C=JSON.parse(localStorage.getItem(CK))}catch(e){}if(!C||!C.id)C=blank();else scrubOwner(C);
 const saveC=()=>localStorage.setItem(CK,JSON.stringify(C));
 let TAB='ed';
 function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2800)}
 const packKg=name=>{const p=M.packs.find(x=>x.name===name);return p?p.kg:''};
 const priceOf=name=>{const p=M.prices.find(x=>nk(x.name)===nk(name));return p?String(p.ton):''};
-function matchPack(ctype){const c=String(ctype||'');const ex=M.packs.find(p=>nk(p.name)===nk(c)||nk(p.name).endsWith(nk(c)));if(ex)return ex.name;
+function matchPack(ctype){const c=String(ctype||'');const ex=M.packs.find(p=>nk(p.name)===nk(c))||M.packs.find(p=>nk(p.name).endsWith(nk(c)))||M.packs.slice().sort((x,y)=>nk(y.name).length-nk(x.name).length).find(p=>nk(p.name).length>3&&nk(c).endsWith(nk(p.name)));if(ex)return ex.name;
  const n=(AD(c).match(/(\d+(?:\.\d+)?)\s*ك/)||[])[1];if(!n)return '';const box=/صندوق|بلاست/.test(c);
  const re=new RegExp('(^|\\D)'+n.replace('.','\\.')+'\\s*ك');const cand=M.packs.filter(p=>re.test(AD(p.name)));
- const hit=cand.find(p=>box?/صندوق|بلاست/.test(p.name):!/صندوق|بلاست/.test(p.name));return hit?hit.name:''}
+ const kw=/مقفول/.test(c)?/مقفول/:/(اوبن|أوبن|open)/i.test(c)?/(اوبن|أوبن|open)/i:null;const ok=p=>box?/صندوق|بلاست|جامبو/.test(p.name):!/صندوق|بلاست|جامبو/.test(p.name);const hit=cand.find(p=>ok(p)&&(!kw||kw.test(p.name)))||(kw?null:cand.find(ok));return hit?hit.name:''}
 function quote(st){const groups=st.lines.map((l,i)=>({key:'L'+i,name:l.name||'صنف',ctype:l.pack||l.ctype||'',cartons:+num(l.cartons)||0,fruit:+num(l.fruit)||0,pallets:0,packUnit:l.pack?packKg(l.pack):0}));const prices={};st.lines.forEach((l,i)=>prices['L'+i]=num(l.ton));
- return SupplyCost.quote({groups,palletCount:+num(st.palletCount)||0,grossManual:num(st.gross),prices,fxRate:num(st.fx),settings:{packWeights:{__pallet__:num(st.palletKg)===''?M.palletKg:num(st.palletKg)}}})}
+ return SupplyCost.quote({groups,palletCount:+num(st.palletCount)||0,grossManual:num(st.gross),prices,fxRate:num(st.fx),settings:{packWeights:{__pallet__:num(st.palletKg)===''?M.palletKg:num(st.palletKg)}},cartonGross:st.netRule==='v2'})}
 // ---------- packing-list PDF import ----------
 const CT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c}return t})();
 const crc=s=>{let c=~0;for(let i=0;i<s.length;i++)c=CT[(c^s.charCodeAt(i))&255]^(c>>>8);return((~c)>>>0).toString(16).padStart(8,'0')};
@@ -53,7 +56,7 @@ function fromRows(rows){const hi=rows.findIndex(r=>r&&r.some(c=>nk(c)==='رقم 
  const g={},pals=new Set(),plist=[];
  rows.slice(hi+1).forEach(r=>{if(!r||r[iP]==null||String(r[iP]).trim()==='')return;const v=String(r[iV]??'').trim(),c=String(r[iC]??'').trim(),n=+num(r[iN])||0;let w=iW>=0?+num(r[iW]):0;if(!w){const m=AD(c).match(/(\d+(?:\.\d+)?)\s*ك/);w=m?+m[1]:0}
   const pid=String(r[iP]).trim();pals.add(pid);let pd=iD>=0?String(r[iD]??'').trim():'';const iso=/^(\d{4}-\d{2}-\d{2})/.exec(pd);const dmy=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(pd);if(iso)pd=iso[1];else if(dmy)pd=dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');else pd='';plist.push({p:pid,name:v,ctype:c,date:pd});const k=v+'|'+c;g[k]=g[k]||{name:(v+' '+c).replace(/\s+/g,' ').trim(),ctype:c,cartons:0,fruit:0,pallets:0,noW:false};g[k].cartons+=n;g[k].fruit+=n*w;g[k].pallets++;if(!w)g[k].noW=true});
- return{info:{reefer:H('رقم الحاوية / البراد','رقم الحاوية','رقم البراد'),date:H('تاريخ التحميل'),importer:H('اسم العميل','العميل'),lots:H('رقم اللوط'),dest:H('الوجهة'),driver:H('اسم السائق','السائق')},groups:Object.values(g),pallets:pals.size,palletRows:plist}}
+ return{info:{scale:H('صافي الميزان بسكول (كجم)','صافي ميزان البسكول (كجم)','صافي الميزان بسكول','صافي ميزان البسكول','الوزن القائم (كجم) = صافي ميزان البسكول'),reefer:H('رقم الحاوية / البراد','رقم الحاوية','رقم البراد'),date:H('تاريخ التحميل'),importer:H('اسم العميل','العميل'),lots:H('رقم اللوط'),dest:H('الوجهة'),driver:H('اسم السائق','السائق')},groups:Object.values(g),pallets:pals.size,palletRows:plist}}
 /* v3: الاستيراد ما يكتبش على بيان عربية تانية. هوية العربية = رقم البراد/الحاوية (من غير مسافات وشرط وأرقام عربي) + تاريخ التحميل */
 const normNo=s=>AD(s==null?'':s).toUpperCase().replace(/[\s\/\\\-_.|]+/g,'');
 const nameKey=s=>nk(s).replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ي').replace(/^(مؤسس[هة]|موسسه|شركه|شركة|مكتب|الساده|السيد)\s+/,'').replace(/\s+/g,'');
@@ -65,7 +68,7 @@ async function importFile(file){$('busy').style.display='flex';try{const rows=aw
   else if(!C.no){const ex=ST.find(x=>sameTruck(x,inf));if(ex&&confirm('فيه بيان متسجل لنفس العربية ونفس التاريخ: '+ex.no+' ('+ex.reefer+' — '+ex.date+').\n\nموافق = افتح البيان ده وحدّثه\nإلغاء = بيان جديد منفصل'))C=JSON.parse(JSON.stringify(ex))}
   if(r.info.importer){const ci=canon(M.importers,r.info.importer);if(ci!==r.info.importer){r.info.importer=ci;setTimeout(()=>{try{toast('العميل متسجل باسم «'+ci+'» — اتربط بيه')}catch(e){}},50)}}
   ['reefer','date','importer','lots','dest','driver'].forEach(k=>{if(r.info[k])C[k]=k==='date'?r.info[k].slice(0,10):r.info[k]});
-  C.palletCount=String(r.pallets);C.pallets=r.palletRows||[];C.lines=r.groups.map(x=>({name:x.name,ctype:x.ctype,pack:matchPack(x.ctype),cartons:String(x.cartons),fruit:String(Math.round(x.fruit*10)/10),ton:priceOf(x.name)}));C.src=file.name;
+  C.netRule='v2';{const sc=+num(r.info.scale);if(sc>0)C.gross=String(sc)}C.palletCount=String(r.pallets);C.pallets=r.palletRows||[];C.lines=r.groups.map(x=>({name:x.name,ctype:x.ctype,pack:matchPack(x.ctype),cartons:String(x.cartons),fruit:String(Math.round(x.fruit*10)/10),ton:priceOf(x.name)}));C.src=file.name;
   ['importers','destinations','drivers'].forEach((k,i)=>{const v=[C.importer,C.dest,C.driver][i];if(v&&v!=='—'&&!M[k].includes(v)&&!(k==='importers'&&M[k].some(x=>nameKey(x)===nameKey(v))))M[k].push(v)});saveM();saveC();TAB='ed';render();
   const miss=C.lines.filter(l=>!l.pack).length;toast('✔ اتقرا الباكينج ليست: '+r.pallets+' باليت'+(miss?' — حدد نوع العبوة لـ '+miss+' صنف':''))}
  catch(e){alert(e.message)}finally{$('busy').style.display='none'}}
@@ -82,9 +85,9 @@ function editor(){const q=quote(C);
  ${fld('gross','الوزن القائم كجم',{num:1,ph:'تلقائي: '+fm(q.grossAuto,1)})}${fld('palletCount','عدد الباليتات',{num:1})}${fld('palletKg','وزن طقم الباليت كجم',{num:1})}${fld('fx','سعر الصرف (ج للدولار)',{num:1})}${fld('fxNote','ملاحظة الصرف')}</div>
  <div class="hint">عمر البراد / الحاوية: <b>${esc((window.CS&&CS.ageLabel)?CS.ageLabel(C.date):'—')}</b> — من تاريخ التحميل حتى اليوم.</div>
  ${dl('dlOwners',M.owners)}${dl('dlImp',M.importers)}${dl('dlDest',M.destinations)}${dl('dlDrv',M.drivers)}${dl('dlPrices',M.prices.map(p=>p.name))}
- <h3>الأصناف</h3><div class="tw"><table><tr><th>الصنف</th><th>نوع العبوة (المهمات)</th><th>عدد العبوات</th><th>وزن الثمرة كجم</th><th>الوزن الصافي</th><th>سعر الطن $</th><th>الإجمالي $</th><th>سعر الطن ج</th><th></th></tr>${lines||'<tr><td colspan="9" class="hint">اسحب ملف باكينج ليست أو أضف صنف</td></tr>'}</table></div>
+ <h3>الأصناف</h3><div class="tw"><table><tr><th>الصنف</th><th>نوع العبوة (المهمات)</th><th>عدد العبوات</th><th>${C.netRule==='v2'?'وزن الكراتين كجم':'وزن الثمرة كجم'}</th><th>الوزن الصافي</th><th>سعر الطن $</th><th>الإجمالي $</th><th>سعر الطن ج</th><th></th></tr>${lines||'<tr><td colspan="9" class="hint">اسحب ملف باكينج ليست أو أضف صنف</td></tr>'}</table></div>
  <button class="btn2 sm" id="addL" type="button" style="margin-top:6px">+ صنف</button>
- <div class="hint" style="margin-top:4px">وزن الثمرة = العبوات × وزن العبوة من الباكينج. لو كتبت الوزن القائم، الصافي بيتوزع على الأصناف بنفس النسبة.</div>
+ <div class="hint" style="margin-top:4px">${C.netRule==='v2'?'وزن الكراتين = العبوات × وزن الكرتونة من الباكينج (قائم للكرتونة من غير باليت). الوزن القائم = صافي ميزان البسكول (بيتقرا من الباكينج ليست). الصافي = القائم − الكراتين الفاضية − الباليتات، وبيتوزع على الأصناف بنسبة الكراتين.':'وزن الثمرة = العبوات × وزن العبوة من الباكينج. لو كتبت الوزن القائم، الصافي بيتوزع على الأصناف بنفس النسبة.'}</div>
  ${(C.pallets||[]).some(x=>x&&x.date)?`<h3>الباليتات ذات تاريخ الإنتاج</h3><div class="tw"><table><tr><th>رقم الباليت</th><th>الصنف</th><th>تاريخ الإنتاج</th><th>عمر الباليت</th></tr>${C.pallets.filter(x=>x&&x.date).map(x=>`<tr><td dir="ltr">${esc(x.p)}</td><td>${esc(x.name||'')}</td><td dir="ltr">${esc(x.date)}</td><td>${esc((window.CS&&CS.ageLabel)?CS.ageLabel(x.date):'')}</td></tr>`).join('')}</table></div>`:''}
  <h3>يخصم (المهمات)</h3><div class="tw"><table><tr><th>الصنف</th><th>العدد</th><th>وزن الوحدة</th><th>الوزن</th></tr>${ded}</table></div>
  <div class="k"><div><span>الوزن القائم</span><b>${fm(q.gross,1)}</b></div><div><span>عدد العبوات</span><b>${fm(q.packages)}</b></div><div><span>إجمالي المخصوم</span><b>${fm(q.tare,1)}</b></div><div><span>الصافي بدون مهمات</span><b>${fm(q.net,1)}</b></div><div><span>الإجمالي $</span><b>${q.ready?fm(q.usd,2):'—'}</b></div><div><span>سعر الصرف</span><b>${q.fxRate?fm(q.fxRate,2):'—'}</b></div><div><span>الإجمالي بالجنيه</span><b>${q.egp==null?'—':fm(q.egp,2)}</b></div><div><span>الحالة</span><b style="font-size:13px">${C.no?'محفوظ — التعديل بنفس الرقم':'جديد'}</b></div></div></div>`}
