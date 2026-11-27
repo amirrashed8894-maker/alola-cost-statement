@@ -29,7 +29,9 @@ let TAB='ed';
 function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2800)}
 const packKg=name=>{const p=M.packs.find(x=>x.name===name);return p?p.kg:''};
 const priceOf=name=>{const p=M.prices.find(x=>nk(x.name)===nk(name));return p?String(p.ton):''};
-function matchPack(ctype){const c=String(ctype||'');const ex=M.packs.find(p=>nk(p.name)===nk(c))||M.packs.find(p=>nk(p.name).endsWith(nk(c)))||M.packs.slice().sort((x,y)=>nk(y.name).length-nk(x.name).length).find(p=>nk(p.name).length>3&&nk(c).endsWith(nk(p.name)));if(ex)return ex.name;
+/* t200 (أمير): «جامبو بلاستيك» = «جامبو بلاستيك 15 ك/كيلو» = «صندوق بلاستيك جامبو» — عبوة واحدة، الفارغ 0.65 (زي المحطة SupplyCost.packName) */
+const jk=s=>nk(s).replace(/كيلو|كجم|كغ/g,'ك').replace(/\s+/g,'');const isJumbo=s=>/جامبو/.test(jk(s))&&/^(صندوق)?(بلاستيك)?جامبو(بلاستيك)?(15ك?)?$/.test(jk(s));
+function matchPack(ctype){const c=String(ctype||'');if(isJumbo(c)){const j=M.packs.find(p=>p&&jk(p.name)==='جامبوبلاستيك15ك')||M.packs.find(p=>p&&isJumbo(p.name));if(j)return j.name}const ex=M.packs.find(p=>nk(p.name)===nk(c))||M.packs.find(p=>nk(p.name).endsWith(nk(c)))||M.packs.slice().sort((x,y)=>nk(y.name).length-nk(x.name).length).find(p=>nk(p.name).length>3&&nk(c).endsWith(nk(p.name)));if(ex)return ex.name;
  const n=(AD(c).match(/(\d+(?:\.\d+)?)\s*ك/)||[])[1];if(!n)return '';const box=/صندوق|بلاست/.test(c);
  const re=new RegExp('(^|\\D)'+n.replace('.','\\.')+'\\s*ك');const cand=M.packs.filter(p=>re.test(AD(p.name)));
  const kw=/مقفول/.test(c)?/مقفول/:/(اوبن|أوبن|open)/i.test(c)?/(اوبن|أوبن|open)/i:null;const ok=p=>box?/صندوق|بلاست|جامبو/.test(p.name):!/صندوق|بلاست|جامبو/.test(p.name);const hit=cand.find(p=>ok(p)&&(!kw||kw.test(p.name)))||(kw?null:cand.find(ok));return hit?hit.name:''}
